@@ -205,7 +205,7 @@ def extract_json(text: str):
         except json.JSONDecodeError:
             pass
     
-    # Try extracting object
+    # Try extracting object hello
     obj_match = re.search(r'\{[\s\S]*\}', text)
     if obj_match:
         try:
