@@ -13,6 +13,7 @@ from services.supabaseservice import initialize_supabase_client # New: For DB co
 from routes import routingservice
 from routes import sosservice        # New: Handles /sos/* endpoints
 from routes import safetyalertservice # New: Handles /alerts/* endpoints
+from routes import aiservice         # New: Handles /ai/* endpoints
 
 
 # --- 1. INITIALIZE FASTAPI APP ---
@@ -64,6 +65,7 @@ async def startup_event():
 app.include_router(routingservice.router) 
 app.include_router(sosservice.router) 
 app.include_router(safetyalertservice.router)
+app.include_router(aiservice.router)
 
 
 # --- 5. ROOT HEALTH CHECK ENDPOINT ---
