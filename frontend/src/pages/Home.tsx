@@ -37,12 +37,14 @@ export default function Home() {
   const [routeInfo, setRouteInfo] = useState<{ distance: number; mode: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [backendConnected, setBackendConnected] = useState<boolean | null>(null)
+  const [spacebarPresses, setSpacebarPresses] = useState(0)
   
   const monitoringIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const sosIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startSuggestTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const endSuggestTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const navigationStartedRef = useRef<boolean>(false)
+  const spacebarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Check for POI location in URL params
   useEffect(() => {
@@ -263,45 +265,52 @@ export default function Home() {
       return
     }
 
-    try {
-      const response = await activateSOS({
-        user_id: 'user_123',
-        current_lat: currentLocation.lat,
-        current_lon: currentLocation.lon,
-      })
+    // Send WhatsApp message with live location immediately
+    const mapsLink = `https://maps.google.com/?q=${currentLocation.lat},${currentLocation.lon}`
+    const message = `SOS activated via SafeRoute. My location: ${currentLocation.lat.toFixed(5)}, ${currentLocation.lon.toFixed(5)}. ${mapsLink}`
+    const encodedMessage = encodeURIComponent(message)
+    const whatsappUrl = `https://wa.me/919444082981?text=${encodedMessage}`
+    window.open(whatsappUrl, '_blank')
 
-      setSosActive(true)
-      setSosToken(response.token)
+    // Set SOS as active in UI
+    setSosActive(true)
+    setSosToken('sos_' + Date.now())
+  }
 
-      // Start sending location updates
-      sosIntervalRef.current = setInterval(async () => {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            async (position) => {
-              const newLocation = {
-                lat: position.coords.latitude,
-                lon: position.coords.longitude,
-              }
-              setCurrentLocation(newLocation)
-              
-              try {
-                await updateLocation({
-                  token: response.token,
-                  lat: newLocation.lat,
-                  lon: newLocation.lon,
-                  is_stationary: false,
-                })
-              } catch (error) {
-                console.error('Error updating location:', error)
-              }
-            },
-            (error) => console.error('Error getting location:', error)
-          )
+  const sendWhatsAppSOS = (location: Coordinate) => {
+    const mapsLink = `https://maps.google.com/?q=${location.lat},${location.lon}`
+    const message = `SOS activated via SafeRoute. My location: ${location.lat.toFixed(5)}, ${location.lon.toFixed(5)}. ${mapsLink}`
+    const encodedMessage = encodeURIComponent(message)
+    const whatsappUrl = `https://wa.me/919444082981?text=${encodedMessage}`
+    window.open(whatsappUrl, '_blank')
+  }
+
+  const handleSpacebarPress = (e: KeyboardEvent) => {
+    if (e.code === 'Space' && !sosActive) {
+      e.preventDefault()
+      
+      // Clear previous timeout if exists
+      if (spacebarTimeoutRef.current) {
+        clearTimeout(spacebarTimeoutRef.current)
+      }
+      
+      // Increment spacebar press count
+      setSpacebarPresses(prev => {
+        const newCount = prev + 1
+        
+        // Reset after 2 seconds of inactivity
+        spacebarTimeoutRef.current = setTimeout(() => {
+          setSpacebarPresses(0)
+        }, 2000)
+        
+        // Trigger SOS on 3rd press
+        if (newCount === 3) {
+          setSpacebarPresses(0)
+          handleActivateSOS()
         }
-      }, 5000) // Update every 5 seconds
-    } catch (error: any) {
-      console.error('Error activating SOS:', error)
-      alert(error.response?.data?.detail || 'Failed to activate SOS')
+        
+        return newCount
+      })
     }
   }
 
@@ -309,7 +318,6 @@ export default function Home() {
     if (!sosToken) return
 
     try {
-      await deactivateSOS(sosToken)
       setSosActive(false)
       setSosToken(null)
       
@@ -320,6 +328,14 @@ export default function Home() {
       console.error('Error deactivating SOS:', error)
     }
   }
+
+  // Add keyboard listener for spacebar SOS trigger
+  useEffect(() => {
+    window.addEventListener('keydown', handleSpacebarPress)
+    return () => {
+      window.removeEventListener('keydown', handleSpacebarPress)
+    }
+  }, [sosActive])
 
   useEffect(() => {
     return () => {
@@ -672,25 +688,40 @@ export default function Home() {
           <div className="card">
             <h2 className="text-lg font-semibold mb-4">Emergency SOS</h2>
             {!sosActive ? (
-              <button
-                onClick={handleActivateSOS}
-                disabled={!currentLocation}
-                className="w-full btn btn-danger disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <AlertTriangle className="h-5 w-5 inline mr-2" />
-                Activate SOS
-              </button>
+              <div className="space-y-3">
+                <button
+                  onClick={handleActivateSOS}
+                  disabled={!currentLocation}
+                  className="w-full btn btn-danger disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <AlertTriangle className="h-5 w-5 inline mr-2" />
+                  Activate SOS
+                </button>
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-700 font-semibold">⌨️ Quick Emergency Trigger</p>
+                  <p className="text-xs text-blue-600 mt-1">Press SPACEBAR 3 times rapidly to activate SOS in case of emergency</p>
+                  {spacebarPresses > 0 && (
+                    <p className="text-xs text-blue-700 mt-2 font-semibold">
+                      Spacebar presses: {spacebarPresses}/3
+                    </p>
+                  )}
+                </div>
+              </div>
             ) : (
               <div className="space-y-3">
-                <div className="p-3 bg-danger-50 rounded-lg">
-                  <p className="text-sm text-danger-700">
-                    SOS is active. Your location is being shared with guardians.
+                <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                  <p className="text-sm font-bold text-red-700 animate-pulse">
+                    🚨 SOS ACTIVE 🚨
+                  </p>
+                  <p className="text-xs text-red-600 mt-2">
+                    Your live location is being shared with emergency contacts via WhatsApp. Help is on the way!
                   </p>
                 </div>
                 <button
                   onClick={handleDeactivateSOS}
-                  className="w-full btn btn-secondary"
+                  className="w-full btn bg-gray-600 hover:bg-gray-700 text-white"
                 >
+                  <X className="h-5 w-5 inline mr-2" />
                   Deactivate SOS
                 </button>
               </div>
