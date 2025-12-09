@@ -56,6 +56,23 @@ class PackingListResponse(BaseModel):
     destination: str
     duration: int
 
+class POISearchRequest(BaseModel):
+    """Request model for POI search"""
+    location: str
+    poi_type: str  # restaurants, attractions, transport
+
+class POIResult(BaseModel):
+    name: str
+    type: str
+    address: str
+    rating: Optional[float] = None
+    distance: Optional[str] = None
+
+class POISearchResponse(BaseModel):
+    results: List[POIResult]
+    location: str
+    poi_type: str
+
 # --- HELPER FUNCTIONS ---
 
 def call_gemini_api(prompt: str) -> str:
@@ -384,6 +401,108 @@ async def generate_packing_list(request: PackingListRequest):
             detail=f"Failed to generate packing list: {str(e)}"
         )
 
+def get_sample_poi(location: str, poi_type: str) -> List[dict]:
+    """
+    Returns sample POI data when API is unavailable.
+    """
+    chennai_pois = {
+        "restaurants": [
+            {"name": "Murugan Idli Shop", "type": "restaurant", "address": "Anna Nagar, Chennai", "rating": 4.5, "distance": "2 km"},
+            {"name": "Saravana Bhavan", "type": "restaurant", "address": "T Nagar, Chennai", "rating": 4.3, "distance": "3 km"},
+            {"name": "Dakshin", "type": "restaurant", "address": "ITC Grand Chola, Chennai", "rating": 4.7, "distance": "5 km"},
+            {"name": "Sangeetha Restaurant", "type": "restaurant", "address": "Mylapore, Chennai", "rating": 4.2, "distance": "1.5 km"},
+        ],
+        "attractions": [
+            {"name": "Marina Beach", "type": "attraction", "address": "Marina Beach Road, Chennai", "rating": 4.6, "distance": "0.5 km"},
+            {"name": "Kapaleeshwarar Temple", "type": "attraction", "address": "Mylapore, Chennai", "rating": 4.7, "distance": "2 km"},
+            {"name": "Fort St. George", "type": "attraction", "address": "Rajaji Salai, Chennai", "rating": 4.4, "distance": "3 km"},
+            {"name": "Government Museum", "type": "attraction", "address": "Pantheon Road, Egmore", "rating": 4.5, "distance": "4 km"},
+        ],
+        "transport": [
+            {"name": "Chennai Central Railway Station", "type": "transport", "address": "Poonamallee High Rd, Chennai", "rating": 4.1, "distance": "1 km"},
+            {"name": "Chennai Metro - Anna Nagar", "type": "transport", "address": "Anna Nagar, Chennai", "rating": 4.3, "distance": "0.8 km"},
+            {"name": "Koyambedu Bus Terminal", "type": "transport", "address": "Koyambedu, Chennai", "rating": 3.9, "distance": "5 km"},
+            {"name": "Chennai Airport", "type": "transport", "address": "Meenambakkam, Chennai", "rating": 4.2, "distance": "15 km"},
+        ]
+    }
+    
+    return chennai_pois.get(poi_type, [])
+
+@router.post("/search-poi", response_model=POISearchResponse)
+async def search_poi(request: POISearchRequest):
+    """
+    Search for Points of Interest (restaurants, attractions, transport) near a location.
+    Falls back to sample data if API is unavailable.
+    """
+    try:
+        print(f"[AI] Searching for {request.poi_type} near {request.location}")
+        
+        prompt = f"""Find popular {request.poi_type} near {request.location}.
+        
+        For each result, provide:
+        - Name of the place
+        - Type: {request.poi_type}
+        - Full address
+        - Rating (out of 5) if known
+        - Approximate distance from {request.location}
+        
+        Return ONLY a valid JSON array (no extra text) with format:
+        [
+            {{"name": "Place Name", "type": "{request.poi_type}", "address": "Full Address", "rating": 4.5, "distance": "1 km"}},
+            {{"name": "Another Place", "type": "{request.poi_type}", "address": "Address", "rating": 4.2, "distance": "2 km"}}
+        ]
+        
+        Provide 5-10 results."""
+        
+        try:
+            response_text = call_gemini_api(prompt)
+            print(f"[AI] Raw response: {response_text[:200]}...")
+            
+            poi_data = extract_json(response_text)
+            
+            if not isinstance(poi_data, list):
+                raise ValueError("Response is not a list")
+            
+            # Validate and convert to POIResult objects
+            results = []
+            for poi in poi_data[:10]:  # Limit to 10 results
+                results.append(POIResult(
+                    name=poi.get("name", "Unknown"),
+                    type=poi.get("type", request.poi_type),
+                    address=poi.get("address", "Address not available"),
+                    rating=poi.get("rating"),
+                    distance=poi.get("distance")
+                ))
+            
+            return POISearchResponse(
+                results=results,
+                location=request.location,
+                poi_type=request.poi_type
+            )
+        
+        except HTTPException as e:
+            # If API is rate-limited or times out, use fallback
+            if e.status_code in [429, 504]:
+                print(f"[AI] API unavailable ({e.status_code}). Using sample POI data.")
+                sample_data = get_sample_poi(request.location, request.poi_type)
+                results = [POIResult(**poi) for poi in sample_data]
+                return POISearchResponse(
+                    results=results,
+                    location=request.location,
+                    poi_type=request.poi_type
+                )
+            raise
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[AI] Error searching POI: {str(e)}")
+        print(f"[AI] Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to search POI: {str(e)}"
+        )
+
 @router.get("/health")
 async def ai_health():
     """
@@ -391,6 +510,6 @@ async def ai_health():
     """
     return {
         "status": "healthy",
-        "services": ["itinerary-builder", "packing-assistant"],
+        "services": ["itinerary-builder", "packing-assistant", "poi-search"],
         "models": ["gemini-2.5-flash"]
     }

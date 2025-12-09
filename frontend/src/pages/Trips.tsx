@@ -1,4 +1,4 @@
-import { Route, Clock, MapPin, Sparkles, Package, Calendar, Users, MapPinIcon } from 'lucide-react'
+import { Route, Clock, MapPin, Sparkles, Package, Calendar, Users, MapPinIcon, Search, Utensils, Camera, Train } from 'lucide-react'
 import { useState } from 'react'
 import clsx from 'clsx'
 
@@ -13,6 +13,14 @@ interface ItineraryItem {
 interface PackingItem {
   category: string
   items: string[]
+}
+
+interface POI {
+  name: string
+  type: string
+  address: string
+  rating?: number
+  distance?: string
 }
 
 export default function Trips() {
@@ -35,6 +43,13 @@ export default function Trips() {
   const [packingActivities, setPackingActivities] = useState<string[]>([])
   const [packingList, setPackingList] = useState<PackingItem[] | null>(null)
   const [packingLoading, setPackingLoading] = useState(false)
+
+  // POI Search State
+  const [showPOISearch, setShowPOISearch] = useState(false)
+  const [poiLocation, setPoiLocation] = useState('')
+  const [poiType, setPoiType] = useState<'restaurants' | 'attractions' | 'transport'>('restaurants')
+  const [poiResults, setPoiResults] = useState<POI[] | null>(null)
+  const [poiLoading, setPoiLoading] = useState(false)
 
   const interestOptions = ['Beach', 'Mountains', 'History', 'Food', 'Art', 'Shopping', 'Nightlife', 'Nature']
   const activityOptions = ['Hiking', 'Swimming', 'Business Meetings', 'Formal Events', 'Casual Walking', 'Photography']
@@ -104,6 +119,38 @@ export default function Trips() {
       alert(`Failed to generate packing list: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setPackingLoading(false)
+    }
+  }
+
+  const searchPOI = async () => {
+    if (!poiLocation) {
+      alert('Please enter a location')
+      return
+    }
+
+    setPoiLoading(true)
+    try {
+      const response = await fetch('http://localhost:8000/ai/search-poi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: poiLocation,
+          poi_type: poiType
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || `API error: ${response.status}`)
+      }
+
+      const data = await response.json()
+      setPoiResults(data.results)
+    } catch (error) {
+      console.error('Error searching POI:', error)
+      alert(`Failed to search POI: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setPoiLoading(false)
     }
   }
 
@@ -352,6 +399,119 @@ export default function Trips() {
                     >
                       Close
                     </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* POI Search */}
+          <div className="card lg:col-span-2">
+            <div className="flex items-center space-x-3 mb-4 pb-4 border-b">
+              <Search className="h-6 w-6 text-warning-600" />
+              <h2 className="text-xl font-semibold text-gray-900">POI Search</h2>
+              <span className="text-sm text-gray-500">(Restaurants, Attractions, Transport)</span>
+            </div>
+
+            {!showPOISearch ? (
+              <button
+                onClick={() => setShowPOISearch(true)}
+                className="w-full btn btn-warning text-center py-8 flex flex-col items-center justify-center space-y-3"
+              >
+                <Search className="h-8 w-8" />
+                <span>Search Points of Interest</span>
+              </button>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                    <input
+                      type="text"
+                      value={poiLocation}
+                      onChange={(e) => setPoiLocation(e.target.value)}
+                      placeholder="e.g., Marina Beach, Chennai"
+                      className="input w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                    <select
+                      value={poiType}
+                      onChange={(e) => setPoiType(e.target.value as any)}
+                      className="input w-full"
+                    >
+                      <option value="restaurants">Restaurants</option>
+                      <option value="attractions">Attractions</option>
+                      <option value="transport">Transport</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex space-x-3">
+                  <button
+                    onClick={searchPOI}
+                    disabled={poiLoading}
+                    className="flex-1 btn btn-warning disabled:opacity-50"
+                  >
+                    {poiLoading ? (
+                      <span className="flex items-center justify-center">
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Searching...
+                      </span>
+                    ) : (
+                      <span className="flex items-center justify-center">
+                        <Search className="h-4 w-4 mr-2" />
+                        Search {poiType.charAt(0).toUpperCase() + poiType.slice(1)}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowPOISearch(false)
+                      setPoiResults(null)
+                    }}
+                    className="btn btn-secondary"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                {poiResults && poiResults.length > 0 && (
+                  <div className="mt-4 pt-4 border-t">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                      {poiType === 'restaurants' && <Utensils className="h-5 w-5 mr-2 text-warning-600" />}
+                      {poiType === 'attractions' && <Camera className="h-5 w-5 mr-2 text-warning-600" />}
+                      {poiType === 'transport' && <Train className="h-5 w-5 mr-2 text-warning-600" />}
+                      Found {poiResults.length} {poiType}
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+                      {poiResults.map((poi, idx) => (
+                        <div key={idx} className="p-4 bg-warning-50 border border-warning-200 rounded-lg">
+                          <h4 className="font-semibold text-gray-900 mb-1">{poi.name}</h4>
+                          <p className="text-sm text-gray-600 mb-2 flex items-center">
+                            <MapPin className="h-3 w-3 mr-1" />
+                            {poi.address}
+                          </p>
+                          {poi.rating && (
+                            <div className="flex items-center space-x-2 text-sm">
+                              <span className="text-yellow-600">★ {poi.rating}</span>
+                              {poi.distance && <span className="text-gray-500">• {poi.distance}</span>}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {poiResults && poiResults.length === 0 && (
+                  <div className="mt-4 pt-4 border-t text-center py-6">
+                    <p className="text-gray-600">No results found for this location</p>
                   </div>
                 )}
               </div>
