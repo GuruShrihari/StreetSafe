@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { AlertTriangle, X, Star, Map as MapIcon, Eye, EyeOff } from 'lucide-react'
+import { Star } from 'lucide-react'
 import Map from '../components/Map'
 import {
   activateSOS,
@@ -101,6 +101,41 @@ export default function Home() {
   const sosIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startSuggestTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const endSuggestTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const spacebarPressCount = useRef(0)
+  const spacebarTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Spacebar triple-press SOS trigger
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !sosActive) {
+        spacebarPressCount.current++
+        
+        // Clear existing timeout
+        if (spacebarTimeout.current) {
+          clearTimeout(spacebarTimeout.current)
+        }
+        
+        // If 3 presses detected, activate SOS
+        if (spacebarPressCount.current === 3) {
+          handleActivateSOS()
+          spacebarPressCount.current = 0
+        } else {
+          // Reset count after 1 second if not 3 presses
+          spacebarTimeout.current = setTimeout(() => {
+            spacebarPressCount.current = 0
+          }, 1000)
+        }
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyPress)
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress)
+      if (spacebarTimeout.current) {
+        clearTimeout(spacebarTimeout.current)
+      }
+    }
+  }, [sosActive])
 
   // Load heatmap and tags on mount
   useEffect(() => {
@@ -520,6 +555,19 @@ export default function Home() {
       return
     }
 
+    // Send WhatsApp SOS message
+    const lat = currentLocation.lat.toFixed(5)
+    const lng = currentLocation.lon.toFixed(5)
+    const message = encodeURIComponent(
+      `🚨 SOS ALERT from SafeTrace!\n\n` +
+      `I need help! This is an emergency.\n\n` +
+      `📍 My Location:\nhttps://www.google.com/maps?q=${lat},${lng}\n\n` +
+      `Coordinates: ${lat}, ${lng}\n` +
+      `Time: ${new Date().toLocaleString()}`
+    )
+    const whatsappUrl = `https://wa.me/919444082981?text=${message}`
+    window.open(whatsappUrl, '_blank')
+
     try {
       const response = await activateSOS({
         user_id: 'user_123',
@@ -591,10 +639,10 @@ export default function Home() {
   startSuggestTimeout.current
   endSuggestTimeout.current
 
-  const routeTypeOptions: { value: RouteType; label: string; emoji: string }[] = [
-    { value: 'fastest', label: 'Fastest', emoji: '⚡' },
-    { value: 'safest', label: 'Safest', emoji: '🛡️' },
-    { value: 'both', label: 'Compare', emoji: '📍' },
+  const routeTypeOptions: { value: RouteType; label: string }[] = [
+    { value: 'fastest', label: 'Fastest' },
+    { value: 'safest', label: 'Safest' },
+    { value: 'both', label: 'Compare' },
   ]
 
   // Format helpers
@@ -644,7 +692,6 @@ export default function Home() {
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               )}
             >
-              {showHeatmap ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
               Heatmap
             </button>
             {backendConnected !== null && (
@@ -663,15 +710,12 @@ export default function Home() {
       {error && (
         <div className="mb-6 card bg-danger-50 border-danger-200">
           <div className="flex items-start justify-between">
-            <div className="flex items-start space-x-3">
-              <AlertTriangle className="h-6 w-6 text-danger-600 mt-0.5" />
-              <div>
-                <h3 className="font-semibold text-danger-900">Error</h3>
-                <p className="text-danger-700 mt-1">{error}</p>
-              </div>
+            <div>
+              <h3 className="font-semibold text-danger-900">Error</h3>
+              <p className="text-danger-700 mt-1">{error}</p>
             </div>
-            <button onClick={() => setError(null)} className="text-danger-600 hover:text-danger-800">
-              <X className="h-5 w-5" />
+            <button onClick={() => setError(null)} className="text-danger-600 hover:text-danger-800 text-xl font-bold">
+              ×
             </button>
           </div>
         </div>
@@ -680,10 +724,7 @@ export default function Home() {
       {/* Success Banner */}
       {ratingSuccess && (
         <div className="mb-6 card bg-green-50 border-green-200">
-          <div className="flex items-center space-x-3">
-            <Star className="h-6 w-6 text-green-600" />
-            <p className="text-green-700">{ratingSuccess}</p>
-          </div>
+          <p className="text-green-700">{ratingSuccess}</p>
         </div>
       )}
 
@@ -722,7 +763,6 @@ export default function Home() {
                     : 'text-gray-600 hover:text-gray-900'
                 )}
               >
-                <MapIcon className="h-4 w-4" />
                 Route
               </button>
               <button
@@ -734,7 +774,6 @@ export default function Home() {
                     : 'text-gray-600 hover:text-gray-900'
                 )}
               >
-                <Star className="h-4 w-4" />
                 Rate
               </button>
             </div>
@@ -758,8 +797,7 @@ export default function Home() {
                           : 'border-gray-200 hover:border-gray-300'
                       )}
                     >
-                      <span className="text-xl">{option.emoji}</span>
-                      <div className="font-medium text-sm mt-1">{option.label}</div>
+                      <div className="font-medium text-sm">{option.label}</div>
                     </button>
                   ))}
                 </div>
@@ -770,8 +808,7 @@ export default function Home() {
                 <h2 className="text-lg font-semibold mb-4">Route Points</h2>
                 <div className="space-y-4">
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                      <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">
                       Start Location
                     </label>
                     <div className="flex space-x-2">
@@ -820,7 +857,7 @@ export default function Home() {
                       <button
                         onClick={() => {
                           setStart(currentLocation)
-                          setStartLocation('📍 Current Location')
+                          setStartLocation('Current Location')
                           setStartSuggestions([])
                         }}
                         className="mt-2 text-sm text-primary-600 hover:text-primary-700"
@@ -831,8 +868,7 @@ export default function Home() {
                   </div>
 
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                      <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">
                       Destination
                     </label>
                     <div className="flex space-x-2">
@@ -893,7 +929,7 @@ export default function Home() {
                         Calculating...
                       </span>
                     ) : (
-                      '🚀 Get Route'
+                      'Get Route'
                     )}
                   </button>
                 </div>
@@ -906,7 +942,7 @@ export default function Home() {
                   {(routeType === 'fastest' || routeType === 'both') && routeInfo.fastestDistance && (
                     <div className="card border-l-4 border-purple-500">
                       <h3 className="font-semibold text-purple-600 mb-3 flex items-center gap-2">
-                        ⚡ Fastest Route
+                        Fastest Route
                         <span className="w-8 h-1 bg-purple-500 rounded" style={{ borderStyle: 'dashed', borderWidth: '1px' }}></span>
                       </h3>
                       <div className="grid grid-cols-3 gap-4 text-center">
@@ -942,7 +978,7 @@ export default function Home() {
                   {(routeType === 'safest' || routeType === 'both') && routeInfo.safestDistance && (
                     <div className="card border-l-4 border-cyan-500">
                       <h3 className="font-semibold text-cyan-600 mb-3 flex items-center gap-2">
-                        🛡️ Safest Route
+                        Safest Route
                         <span className="w-8 h-1 bg-cyan-500 rounded"></span>
                       </h3>
                       <div className="grid grid-cols-3 gap-4 text-center">
@@ -985,14 +1021,14 @@ export default function Home() {
                       onClick={handleStartJourney}
                       className="w-full py-3 px-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg"
                     >
-                      🚶 Start Journey
+                      Start Journey
                     </button>
                   ) : (
                     <button
                       onClick={handleEndJourney}
                       className="w-full py-3 px-4 bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-red-600 transition-all shadow-lg animate-pulse"
                     >
-                      🏁 End Journey & Rate
+                      End Journey & Rate
                     </button>
                   )}
                   {journeyActive && (
@@ -1007,7 +1043,7 @@ export default function Home() {
               {showJourneyRating && (
                 <div className="card border-2 border-primary-500 bg-primary-50">
                   <h2 className="text-xl font-bold mb-4 text-primary-700">
-                    Rate Your Journey 🌟
+                    Rate Your Journey
                   </h2>
 
                   <div className="space-y-4">
@@ -1035,11 +1071,11 @@ export default function Home() {
                     </div>
 
                     <div className="text-center text-sm text-gray-500">
-                      {overallRating === 1 && '😟 Very Unsafe'}
-                      {overallRating === 2 && '😕 Somewhat Unsafe'}
-                      {overallRating === 3 && '😐 Neutral'}
-                      {overallRating === 4 && '🙂 Mostly Safe'}
-                      {overallRating === 5 && '😊 Very Safe'}
+                      {overallRating === 1 && 'Very Unsafe'}
+                      {overallRating === 2 && 'Somewhat Unsafe'}
+                      {overallRating === 3 && 'Neutral'}
+                      {overallRating === 4 && 'Mostly Safe'}
+                      {overallRating === 5 && 'Very Safe'}
                     </div>
 
                     {ratingLoading && (
@@ -1073,19 +1109,26 @@ export default function Home() {
               <div className="card">
                 <h2 className="text-lg font-semibold mb-4">Emergency SOS</h2>
                 {!sosActive ? (
-                  <button
-                    onClick={handleActivateSOS}
-                    disabled={!currentLocation}
-                    className="w-full btn btn-danger disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <AlertTriangle className="h-5 w-5 inline mr-2" />
-                    Activate SOS
-                  </button>
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleActivateSOS}
+                      disabled={!currentLocation}
+                      className="w-full btn btn-danger disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Activate SOS
+                    </button>
+                    <p className="text-xs text-gray-500 text-center">
+                      Tip: Press spacebar 3 times quickly to activate
+                    </p>
+                  </div>
                 ) : (
                   <div className="space-y-3">
-                    <div className="p-3 bg-danger-50 rounded-lg">
+                    <div className="p-3 bg-danger-50 rounded-lg border border-danger-200">
+                      <p className="text-sm font-semibold text-danger-900 mb-1">
+                        SOS ACTIVE
+                      </p>
                       <p className="text-sm text-danger-700">
-                        SOS is active. Your location is being shared with guardians.
+                        Emergency alert sent. Location shared via WhatsApp.
                       </p>
                     </div>
                     <button onClick={handleDeactivateSOS} className="w-full btn btn-secondary">
@@ -1103,14 +1146,11 @@ export default function Home() {
               {/* Instructions */}
               {!selectedSegmentId && (
                 <div className="card bg-gradient-to-br from-primary-50 to-pink-50 border-primary-200">
-                  <div className="flex items-start gap-3">
-                    <Star className="h-6 w-6 text-primary-600 mt-1" />
-                    <div>
-                      <h3 className="font-semibold text-primary-900 mb-1">Rate a street segment</h3>
-                      <p className="text-sm text-primary-700">
-                        Click on any street on the map to rate its safety. Your feedback helps others stay safe!
-                      </p>
-                    </div>
+                  <div>
+                    <h3 className="font-semibold text-primary-900 mb-1">Rate a street segment</h3>
+                    <p className="text-sm text-primary-700">
+                      Click on any street on the map to rate its safety. Your feedback helps others stay safe!
+                    </p>
                   </div>
                 </div>
               )}
@@ -1215,7 +1255,7 @@ export default function Home() {
                     disabled={ratingLoading || selectedRating === 0}
                     className="w-full btn btn-primary disabled:opacity-50"
                   >
-                    {ratingLoading ? '⏳ Submitting...' : '📤 Submit Rating'}
+                    {ratingLoading ? 'Submitting...' : 'Submit Rating'}
                   </button>
 
                   {/* Cancel Button */}
