@@ -1,14 +1,29 @@
-# SafeTrace X - Intelligent Safety Routing System
+# SafeTrace X - Intelligent Travel & Safety Companion
 
-A comprehensive safety routing application with real-time hazard monitoring, emergency SOS features, and intelligent route planning.
+The ultimate AI-powered platform for modern travelers. SafeTrace X combines intelligent safety routing with comprehensive travel management, helping you plan, navigate, and cherish your journeys with complete peace of mind.
 
 ## 🚀 Features
 
-- **Intelligent Route Planning**: Multiple routing modes (Safe, Balanced, Stealth, Escort)
-- **Real-time Safety Monitoring**: Continuous hazard detection and route deviation alerts
-- **Emergency SOS System**: Live location sharing with guardian dashboard
-- **Interactive Map**: Beautiful map interface with route visualization
-- **Modern UI**: Responsive design with Tailwind CSS
+### 🗺️ Intelligent Navigation & Safety
+- **Adaptive Routing**: Choose your path based on your needs - **Safe**, **Balanced**, **Stealth**, or **Escort** modes.
+- **Real-time Guardian**: Continuous hazard monitoring and route deviation alerts keep you safe.
+- **Emergency SOS**: Instant live location sharing with a dedicated guardian dashboard.
+- **Interactive Maps**: Beautiful, responsive maps with clear route visualization.
+
+### 📅 Smart Itinerary & Packages
+- **AI Itinerary Planner**: Generate personalized day-by-day itineraries based on your interests and time.
+- **Curated Packages**: Explore pre-built travel packages for adventure, relaxation, or culture.
+- **Dynamic Scheduling**: Automatically adjust your plans if you're running late or want to stay longer.
+
+### 💰 Expense Management
+- **Smart Tracking**: Log expenses on the go and categorize them automatically.
+- **Budget Alerts**: Set daily or trip limits and get notified before you overspend.
+- **Group Splitting**: Easily split bills with fellow travelers.
+
+### ✍️ AI-Enhanced Journaling
+- **Smart Memories**: Automatically organize your photos and location history into a cohesive story.
+- **AI Enhancements**: Let AI polish your notes into beautiful travelogues.
+- **Context Awareness**: The journal knows where you were and suggests details you might have missed.
 
 ## 📁 Project Structure
 
@@ -68,19 +83,18 @@ The frontend will be available at `http://localhost:3000`
 
 ## 🎯 Usage
 
-1. **Plan a Route**:
-   - Set your start and end points (or use current location)
-   - Select a routing mode
-   - Click "Calculate Route" to see the safest path
+1. **Plan Your Trip**:
+   - Browse **Packages** or create a custom **Itinerary**.
+   - Set your budget in **Expenses**.
 
-2. **Monitor Safety**:
-   - Once a route is active, the system automatically monitors for hazards
-   - Alerts will appear if hazards are detected or you deviate from the route
+2. **Navigate Safely**:
+   - Use the **Map** to find the safest route to your destination.
+   - Select a mode: **Safe**, **Balanced**, **Stealth**, or **Escort**.
+   - Activate **SOS** if you feel unsafe.
 
-3. **Emergency SOS**:
-   - Click "Activate SOS" to start emergency tracking
-   - Share the guardian link with trusted contacts
-   - They can view your real-time location on the guardian dashboard
+3. **Capture Memories**:
+   - Use **Journaling** to record your experiences.
+   - Let AI enhance your entries with context and style.
 
 ## 🔧 Configuration
 
@@ -119,4 +133,3 @@ The frontend will be available at `http://localhost:3000`
 ## 📄 License
 
 This project is part of the SafeTrace X system.
-

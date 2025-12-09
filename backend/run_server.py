@@ -2,8 +2,11 @@ import uvicorn
 import sys
 import os
 
-os.chdir(r"C:\Users\saaja\Downloads\blistering-barnacles\backend")
-sys.path.insert(0, r"C:\Users\saaja\Downloads\blistering-barnacles\backend")
+# Ensure we run from the backend directory relative to this file
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+os.chdir(BASE_DIR)
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 
 print(f"CWD: {os.getcwd()}")
 print(f"sys.path[0]: {sys.path[0]}")
