@@ -1088,7 +1088,7 @@ export default function Home() {
                     {journeyActive && (
                       <p className="text-sm text-gray-500 mt-2 text-center">
                         Journey in progress... Click when you arrive at your destination
->>>>>>> origin/saajan
+
                       </p>
                     )}
                   </div>
