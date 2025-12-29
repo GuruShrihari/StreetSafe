@@ -78,7 +78,7 @@ def calculate_and_sync_scores():
     CURRENT_SHADOW_SCORES = new_scores
     
     # 3. Synchronization (Placeholder for Supabase/External DB)
-    # This step is critical if you plan to run SafeTrace X across multiple servers/instances.
+    # This step is critical if you plan to run StreetSafe X across multiple servers/instances.
     # if supabase_client:
     #     sync_scores_to_db(new_scores)
     #     pass

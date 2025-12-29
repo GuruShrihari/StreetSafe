@@ -1,6 +1,6 @@
-# SafeTrace X Frontend
+# StreetSafe X Frontend
 
-A beautiful, modern React frontend for the SafeTrace X intelligent safety routing system.
+A beautiful, modern React frontend for the StreetSafe X intelligent safety routing system.
 
 ## Features
 

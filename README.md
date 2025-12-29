@@ -1,4 +1,4 @@
-# SafeTrace - Intelligent Safety Routing System
+# StreetSafe - Intelligent Safety Routing System
 
 A comprehensive safety routing application with real-time hazard monitoring, emergency SOS features, and intelligent route planning.
 
@@ -118,5 +118,5 @@ The frontend will be available at `http://localhost:3000`
 
 ## 📄 License
 
-This project is part of the SafeTrace X system.
+This project is part of the StreetSafe X system.
 

@@ -18,7 +18,7 @@ import httpx
 from shapely.geometry import Point, LineString
 from routes import aiservice, routingservice, sosservice, safetyalertservice
 
-app = FastAPI(title="SafeTrace API", description="Safe routing for pedestrians")
+app = FastAPI(title="StreetSafe API", description="Safe routing for pedestrians")
 
 # Geoapify API Configuration
 GEOAPIFY_API_KEY = "850a27a332bf474a9c0646d7ee8df85b"
@@ -338,7 +338,7 @@ async def get_road_name_from_osm(osmid: int) -> str:
                 "format": "json"
             }
             headers = {
-                "User-Agent": "SafeTrace/1.0 (pedestrian safety app)"
+                "User-Agent": "StreetSafe/1.0 (pedestrian safety app)"
             }
             
             response = await client.get(url, params=params, headers=headers)
@@ -593,7 +593,7 @@ def compute_safest_route(start_node, end_node):
 @app.get("/")
 async def root():
     return {
-        "service": "SafeTrace API",
+        "service": "StreetSafe API",
         "version": "1.0",
         "status": "running",
         "endpoints": [
