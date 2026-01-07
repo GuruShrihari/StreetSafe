@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Star } from 'lucide-react'
 import Map from '../components/Map'
@@ -12,6 +12,7 @@ import {
   getSegmentInfo,
   getAvailableTags,
   getSafetyHeatmap,
+  resetHeatmap,
   HeatmapGeoJSON,
   SegmentInfo,
   TagsResponse,
@@ -109,12 +110,12 @@ export default function Home() {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.code === 'Space' && !sosActive) {
         spacebarPressCount.current++
-        
+
         // Clear existing timeout
         if (spacebarTimeout.current) {
           clearTimeout(spacebarTimeout.current)
         }
-        
+
         // If 3 presses detected, activate SOS
         if (spacebarPressCount.current === 3) {
           handleActivateSOS()
@@ -127,7 +128,7 @@ export default function Home() {
         }
       }
     }
-    
+
     window.addEventListener('keydown', handleKeyPress)
     return () => {
       window.removeEventListener('keydown', handleKeyPress)
@@ -206,7 +207,7 @@ export default function Home() {
   }, [])
 
   // Handle segment click for rating
-  const handleSegmentClick = async (segmentId: number, _lngLat: { lng: number; lat: number }) => {
+  const handleSegmentClick = useCallback(async (segmentId: number, _lngLat: { lng: number; lat: number }) => {
     if (activeTab !== 'rate') return
 
     setSelectedSegmentId(segmentId)
@@ -220,6 +221,29 @@ export default function Home() {
     } catch (err) {
       console.error('Error getting segment info:', err)
       setSelectedSegmentInfo(null)
+    }
+  }, [activeTab])
+
+  // Reset heatmap with random demo data
+  const handleResetHeatmap = async () => {
+    setLoading(true)
+    try {
+      const result = await resetHeatmap()
+      console.log('[HEATMAP] Reset:', result)
+
+      // Refresh heatmap display
+      const newHeatmap = await getSafetyHeatmap()
+      setHeatmapData(newHeatmap)
+
+      setError(null)
+      setRatingSuccess(`Heatmap reset! ${result.stats.green} safe, ${result.stats.orange} moderate, ${result.stats.red} unsafe segments`)
+      setTimeout(() => setRatingSuccess(null), 4000)
+    } catch (err) {
+      console.error('Error resetting heatmap:', err)
+      setError('Failed to reset heatmap')
+      setTimeout(() => setError(null), 3000)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -461,7 +485,7 @@ export default function Home() {
   const sendSOSMessage = (lat: string, lng: string) => {
     const cleanNumber = emergencyContact.replace(/[^0-9]/g, '')
     const message = encodeURIComponent(
-      `🚨 SOS ALERT from SafeTrace!\n\n` +
+      `🚨 SOS ALERT from StreetSafe!\n\n` +
       `I need help! This is an emergency.\n\n` +
       `📍 My Location:\nhttps://www.google.com/maps?q=${lat},${lng}\n\n` +
       `Coordinates: ${lat}, ${lng}\n` +
@@ -552,7 +576,7 @@ export default function Home() {
   const handleActivateSOS = async () => {
     // Try to get current location if not available
     let location = currentLocation
-    
+
     if (!location) {
       try {
         // Request location permission and get current position
@@ -566,7 +590,7 @@ export default function Home() {
             timeout: 5000
           })
         })
-        
+
         location = {
           lat: position.coords.latitude,
           lon: position.coords.longitude
@@ -582,7 +606,7 @@ export default function Home() {
     const lat = location.lat.toFixed(5)
     const lng = location.lon.toFixed(5)
     const message = encodeURIComponent(
-      `🚨 SOS ALERT from SafeTrace!\n\n` +
+      `🚨 SOS ALERT from StreetSafe!\n\n` +
       `I need help! This is an emergency.\n\n` +
       `📍 My Location:\nhttps://www.google.com/maps?q=${lat},${lng}\n\n` +
       `Coordinates: ${lat}, ${lng}\n` +
@@ -695,7 +719,7 @@ export default function Home() {
         <div className="flex items-center justify-between mb-2">
           <div>
             <h1 className="text-4xl font-bold text-gray-900 mb-2">
-              SafeTrace
+              StreetSafe
             </h1>
             <p className="text-gray-600">
               Navigate safely with real-time safety ratings
@@ -716,6 +740,15 @@ export default function Home() {
               )}
             >
               Heatmap
+            </button>
+            {/* Reset Heatmap Button */}
+            <button
+              onClick={handleResetHeatmap}
+              disabled={loading}
+              className="px-4 py-2 rounded-lg font-medium bg-purple-500 text-white hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              title="Reset heatmap with random demo data"
+            >
+              {loading ? '⟳' : '🔄'} Reset Demo Data
             </button>
             {backendConnected !== null && (
               <div className="flex items-center space-x-2">
